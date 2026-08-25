@@ -1,5 +1,5 @@
 import streamlit as st
-from typing import cast
+from typing import Any, cast
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from lead_intake_agent import lead_agent
 
@@ -71,7 +71,7 @@ if user_input := st.chat_input("Tell us about your project requirements..."):
         # Stream graph updates step-by-step
         with st.spinner("Processing request..."):
             events = lead_agent.stream(
-                {"messages": st.session_state.agent_state},
+                cast(Any, {"messages": st.session_state.agent_state}),
                 stream_mode="values"
             )
 
