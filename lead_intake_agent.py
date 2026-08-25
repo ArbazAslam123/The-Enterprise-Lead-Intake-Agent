@@ -2,57 +2,52 @@ import os
 from typing import TypedDict, Annotated
 import streamlit as st
 from dotenv import load_dotenv
-from pydantic import SecretStr
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from pydantic import SecretStr
 
-from google_sheets_tool import get_sheets_client
+from google_sheets_tool import log_lead_to_sheets
 from clickup_tool import create_clickup_task
 
 load_dotenv()
 
-# Retrieve API key securely
 groq_api_key = (
-    st.secrets.get("GROQ_API_KEY") 
-    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets 
+    st.secrets.get("GROQ_API_KEY")
+    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets
     else os.environ.get("GROQ_API_KEY")
 )
 
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
-# Initialize model
 llm = ChatGroq(
     model="qwen.qwen3.6-27b",
-    api_key=SecretStr(groq_api_key) if isinstance(groq_api_key, str) else None,
+    api_key=SecretStr(groq_api_key) if groq_api_key else None,
     temperature=0.1
 )
 
-tools = [get_sheets_client, create_clickup_task]
+tools = [log_lead_to_sheets, create_clickup_task]
 llm_with_tools = llm.bind_tools(tools)
 
 SYSTEM_PROMPT = """You are an Enterprise Lead Intake Specialist for an AI & Data Engineering Agency.
 Your objective is to collect 4 specific data points from incoming prospects:
-1. Full Name
-2. Company Name (or 'Individual' if none)
-3. Project Scope / Summary
-4. Estimated Budget
+1. client_name (Full Name)
+2. company (Company Name or 'Individual')
+3. project_summary (Brief Project Scope)
+4. budget (Estimated Budget)
 
-Formatting Rules:
-- Never wrap dollar values in raw quotes that trigger math formatting (e.g., do NOT write "$10k-20k$" or "$5,000$").
-- Always format currency as either 'USD 10,000' or '\$10,000 - \$20,000' using plain text.
-- If any required information is missing, converse naturally to request the remaining details.
-- Once you have ALL 4 details, invoke BOTH `log_lead_to_sheets` AND `create_clickup_task`.
-- After tools execute, confirm the registration clearly and professionally to the user.
+Rules:
+- Never wrap dollar values in raw quotes that trigger math formatting (e.g., do NOT write "$10k-20k$" or "$5,000$"). Use 'USD 10,000' or '\\$10,000'.
+- If any required details are missing, converse naturally to ask for the remaining pieces.
+- Once you have ALL 4 details, call BOTH `log_lead_to_sheets` AND `create_clickup_task` using the collected fields: `client_name`, `company`, `budget`, and `project_summary`.
+- After both tools execute, provide a clear, professional confirmation message.
 """
 
 def assistant_node(state: AgentState):
     raw_messages = list(state["messages"])
-    
-    # Ensure system message is properly prepended as a LangChain BaseMessage
     if not raw_messages or not isinstance(raw_messages[0], SystemMessage):
         formatted_messages = [SystemMessage(content=SYSTEM_PROMPT)] + raw_messages
     else:

@@ -1,48 +1,54 @@
 import os
 import requests
+import streamlit as st
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
-# Ensure environment variables are loaded
 load_dotenv()
 
-CLICKUP_API_KEY = os.environ.get("CLICKUP_API_KEY")
-CLICKUP_LIST_ID = os.environ.get("CLICKUP_LIST_ID")
+def get_clickup_credentials():
+    api_key = (
+        st.secrets.get("CLICKUP_API_KEY") 
+        if hasattr(st, "secrets") and "CLICKUP_API_KEY" in st.secrets 
+        else os.environ.get("CLICKUP_API_KEY")
+    )
+    list_id = (
+        st.secrets.get("CLICKUP_LIST_ID") 
+        if hasattr(st, "secrets") and "CLICKUP_LIST_ID" in st.secrets 
+        else os.environ.get("CLICKUP_LIST_ID")
+    )
+    return api_key, list_id
 
-@tool
+class ClickUpTaskSchema(BaseModel):
+    client_name: str = Field(description="Full name of the client or lead")
+    company: str = Field(description="Company or business name, or 'Individual'")
+    budget: str = Field(description="Estimated budget, e.g., 'USD 10,000'")
+    project_summary: str = Field(description="Summary of project requirements")
+    urgency_level: str = Field(default="normal", description="Priority level: urgent, high, normal, or low")
+
+@tool("create_clickup_task", args_schema=ClickUpTaskSchema)
 def create_clickup_task(
     client_name: str,
     company: str,
     budget: str,
     project_summary: str,
-    urgency_level: str = "normal"
+    urgency_level: str = "normal",
+    **kwargs
 ) -> str:
-    """
-    Create a new sales follow-up task in ClickUp for an incoming qualified lead.
+    """Create a new sales follow-up task in ClickUp for an incoming qualified lead."""
+    api_key, list_id = get_clickup_credentials()
+    
+    if not api_key or not list_id:
+        return "ClickUp credentials missing from environment or Streamlit secrets."
 
-    Args:
-        client_name: Full name of the lead.
-        company: Business or organization name.
-        budget: Estimated client budget (e.g., '$10,000').
-        project_summary: Concise description of requirements and scope.
-        urgency_level: Priority level - 'urgent', 'high', 'normal', or 'low'.
-    """
-    if not CLICKUP_API_KEY or not CLICKUP_LIST_ID:
-        return f"Configuration Error: Missing CLICKUP_API_KEY ({bool(CLICKUP_API_KEY)}) or CLICKUP_LIST_ID ({bool(CLICKUP_LIST_ID)}) in .env"
-
-    url = f"https://api.clickup.com/api/v2/list/{CLICKUP_LIST_ID}/task"
-
+    url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
     headers = {
-        "Authorization": CLICKUP_API_KEY.strip(),
+        "Authorization": str(api_key).strip(),
         "Content-Type": "application/json"
     }
 
-    priority_map = {
-        "urgent": 1,
-        "high": 2,
-        "normal": 3,
-        "low": 4
-    }
+    priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
     priority_val = priority_map.get(urgency_level.lower(), 3)
 
     task_description = (
@@ -64,28 +70,9 @@ def create_clickup_task(
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
-        
         if response.status_code in (200, 201):
             data = response.json()
-            task_url = data.get("url", "")
-            return f"Success: ClickUp task created. URL: {task_url}"
-        else:
-            return f"ClickUp API Error ({response.status_code}): {response.text}"
+            return f"ClickUp task created successfully. URL: {data.get('url', '')}"
+        return f"ClickUp API Error ({response.status_code}): {response.text}"
     except Exception as e:
-        return f"Network/Connection Error: {str(e)}"
-
-
-# --- DIRECT EXECUTION TEST BLOCK ---
-if __name__ == "__main__":
-    
-    test_payload = {
-        "client_name": "Babar Azam",
-        "company": "PCB",
-        "budget": "$67,000",
-        "project_summary": "End-to-end multi-agent orchestration for supply chain telemetry.",
-        "urgency_level": "high"
-    }
-    
-    result = create_clickup_task.invoke(test_payload)
-    print("\n--- Output ---")
-    print(result)
+        return f"Failed to connect to ClickUp API. Error: {str(e)}"
