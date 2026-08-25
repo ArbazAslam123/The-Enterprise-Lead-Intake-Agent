@@ -3,7 +3,7 @@ from google_sheets_tool import get_sheets_client
 print("Testing direct Google Sheets insertion...")
 
 # Invoke the tool directly using .invoke()
-result = log_lead_to_sheets.invoke({
+result = get_sheets_client.invoke({
     "name": "Sarah Connor",
     "company": "Cyberdyne Systems",
     "budget": "$15,000",
