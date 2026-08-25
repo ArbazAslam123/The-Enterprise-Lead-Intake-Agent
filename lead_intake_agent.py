@@ -26,7 +26,7 @@ class AgentState(TypedDict):
 
 # Initialize model
 llm = ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="qwen.qwen3.6-27b",
     api_key=SecretStr(groq_api_key) if isinstance(groq_api_key, str) else None,
     temperature=0.1
 )
