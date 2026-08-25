@@ -1,4 +1,4 @@
-from google_sheets_tool import log_lead_to_sheets
+from google_sheets_tool import get_sheets_client
 
 print("Testing direct Google Sheets insertion...")
 

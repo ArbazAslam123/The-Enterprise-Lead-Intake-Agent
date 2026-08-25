@@ -1,0 +1,8 @@
+streamlit
+langchain-groq
+langgraph
+langchain-core
+gspread
+google-auth
+requests
+python-dotenv

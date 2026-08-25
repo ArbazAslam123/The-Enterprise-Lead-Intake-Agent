@@ -8,7 +8,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import SecretStr
 
 # Import out custom verified tools
-from google_sheets_tool import log_lead_to_sheets
+from google_sheets_tool import get_sheets_client
 from clickup_tool import create_clickup_task
 
 load_dotenv()
@@ -25,7 +25,7 @@ llm= ChatGroq(
     temperature=0.1
 )
 
-tools= [log_lead_to_sheets, create_clickup_task]
+tools= [get_sheets_client, create_clickup_task]
 llm_with_tools= llm.bind_tools(tools)
 
 # System Prompt Instruction
