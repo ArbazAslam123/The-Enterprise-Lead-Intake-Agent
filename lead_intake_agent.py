@@ -24,7 +24,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 llm = ChatGroq(
-    model="qwen.qwen3.6-27b",
+    model="qwen/qwen3.6-27b",
     api_key=SecretStr(groq_api_key) if groq_api_key else None,
     temperature=0.1
 )

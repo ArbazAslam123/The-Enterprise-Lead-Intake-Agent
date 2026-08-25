@@ -22,7 +22,7 @@ with st.sidebar:
     st.subheader("Connected Integrations")
     st.success("🟢 Google Sheets API (`AI_Lead_Intake_DB`)")
     st.success("🟢 ClickUp REST API (Task Automation)")
-    st.info("🔵 Model: `qwen.qwen3.6-27b`")
+    st.info("🔵 Model: `qwen/qwen3.6-27b`")
     
     st.divider()
     if st.button("Clear Chat Session", use_container_width=True):
